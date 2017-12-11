@@ -2,6 +2,9 @@
 # baclophen trials: (placebo)effects
 # ----------------------------------
 
+# clean up
+rm(list = ls())
+
 library(readxl)
 library(lattice)
 library(ggplot2)
@@ -14,7 +17,6 @@ setwd('D:/Other/ITB/')
 itbdata.xlsx <- read_excel("ITB trials - data-analyse 20170831.xlsx", sheet = 1)
 date.tag <- "20170831"
 
-
 # dataset met effecten
 itb.effect.2uur <- data.frame(itbdata.xlsx, TijdNaInj = 2, MAS.effect = itbdata.xlsx$MASna2uur - itbdata.xlsx$MASvoor)
 itb.effect.4uur <- data.frame(itbdata.xlsx, TijdNaInj = 4, MAS.effect = itbdata.xlsx$MASna4uur - itbdata.xlsx$MASvoor)
@@ -22,7 +24,6 @@ itb.effect <- rbind(itb.effect.2uur, itb.effect.4uur)
 # dosis van de vorige dag toevoegen
 itb.effect <- data.frame(itb.effect, vorigeDosis = 0)
 for (i in 1:NROW(itb.effect)) {
-  print(i)
   if (itb.effect$Dag[i] > 1) {
     vorige.dag <- itb.effect$Dag[i] - 1
     selectie <- itb.effect$EAD.nummer == itb.effect$EAD.nummer[i] & itb.effect$Dag == vorige.dag
@@ -30,6 +31,7 @@ for (i in 1:NROW(itb.effect)) {
     itb.effect$vorigeDosis[i] <- mean(itb.effect$Dosis[selectie])
   }
 }
+
 # dosis van 2 dage eerder toevoegen
 itb.effect <- data.frame(itb.effect, DosisEergisteren = 0)
 for (i in 1:NROW(itb.effect)) {
@@ -48,6 +50,23 @@ p <- ggplot(data = itb.effect, aes(x = Dosis, y = MAS.effect, colour = factor(Ti
 p <- p  + geom_hline(aes(yintercept=0)) + stat_smooth(method = "lm") + theme_grey(base_size = 18)
 p
 dev.off()
+
+# make 3 plots of 8
+EAD.list <- unique(itb.effect$EAD.nummer)
+np <- length(EAD.list)
+for (i in seq(1, 4)) {
+  from.EAD <- 1 + (i - 1) * 8
+  to.EAD <- (min(8 + (i - 1) * 8, np))
+  selected.EADs <- EAD.list[from.EAD:to.EAD]
+  tiff(paste0("Overzicht_dosis_effect_per_patient_", from.EAD, 'to', to.EAD, '_', date.tag, ".tiff"), 
+       width = 6.5, height = 6.5, 
+       units = "in", pointsize = 12, res = 144, compression = "lzw")
+  p <- ggplot(data = itb.effect[itb.effect$EAD.nummer %in% selected.EADs,], 
+              aes(x = Dosis, y = MAS.effect, colour = factor(TijdNaInj))) + geom_point() + facet_wrap( ~ EAD.nummer)
+  p <- p  + geom_hline(aes(yintercept=0)) + stat_smooth(method = "lm") + theme_grey(base_size = 18)
+  print(p)
+  dev.off()
+}
 
 # ----------------------------
 # simple linear regression
