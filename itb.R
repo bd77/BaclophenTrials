@@ -122,11 +122,13 @@ dev.off()
 # fitting a linear mixed model
 # ----------------------------
 
-itb.lme4.1 = lmer(MAS.effect ~ Dosis + (1 | EAD.nummer), data = itb.effect)
+itb.lme4.1 = lmer(MAS.effect ~ Dosis + (1 | EAD.nummer), data = itb.effect, REML = FALSE)
 summary(itb.lme4.1)
 
-itb.lme4.2 = lmer(MAS.effect ~ Dosis + (Dosis | EAD.nummer), data = itb.effect)
+itb.lme4.2 = lmer(MAS.effect ~ Dosis + (Dosis | EAD.nummer), data = itb.effect, REML = FALSE)
 summary(itb.lme4.2)
+
+AIC(itb.lme4.1, itb.lme4.2)
 
 itb.lme4 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + TijdNaInj + (1 | EAD.nummer), data = itb.effect)
 summary(itb.lme4)
