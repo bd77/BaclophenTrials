@@ -11,6 +11,7 @@ library(ggplot2)
 library(lme4)
 
 setwd('D:/Other/ITB/')
+setwd('C:\Documenten/Statistiek/BaclophenTrials/')
 
 # itbdata.xlsx <- read_excel("ITB trials - data-analyse.xlsx", sheet = 1)
 # itbdata.xlsx <- read_excel("Kopie van ITB trials - data-analyse (002) 13-06-17.xlsx", sheet = 1)
@@ -54,9 +55,10 @@ dev.off()
 # make 3 plots of 8
 EAD.list <- unique(itb.effect$EAD.nummer)
 np <- length(EAD.list)
+graphs.per.plot <- 9
 for (i in seq(1, 4)) {
-  from.EAD <- 1 + (i - 1) * 8
-  to.EAD <- (min(8 + (i - 1) * 8, np))
+  from.EAD <- 1 + (i - 1) * graphs.per.plot
+  to.EAD <- (min(graphs.per.plot * i, np))
   selected.EADs <- EAD.list[from.EAD:to.EAD]
   tiff(paste0("Overzicht_dosis_effect_per_patient_", from.EAD, 'to', to.EAD, '_', date.tag, ".tiff"), 
        width = 6.5, height = 6.5, 
@@ -72,8 +74,8 @@ for (i in seq(1, 4)) {
 # simple linear regression
 # ----------------------------
 
-lm.itb <- lm(MAS.effect ~ Dosis + TijdNaInj + vorigeDosis + DosisEergisteren, data = itb.effect, na.action = na.exclude)
-summary(lm.itb)
+lm.itb.1 <- lm(MAS.effect ~ Dosis + TijdNaInj + vorigeDosis + DosisEergisteren, data = itb.effect, na.action = na.exclude)
+summary(lm.itb.1)
 
 # Call:
 #   lm(formula = MAS.effect ~ Dosis + TijdNaInj + vorigeDosis + DosisEergisteren, 
@@ -98,9 +100,16 @@ summary(lm.itb)
 # Multiple R-squared:  0.1644,	Adjusted R-squared:  0.1518 
 # F-statistic: 13.04 on 4 and 265 DF,  p-value: 1.051e-09
 
+lm.itb.2 <- lm(MAS.effect ~ 0 + Dosis + TijdNaInj + vorigeDosis + DosisEergisteren, data = itb.effect, na.action = na.exclude)
+summary(lm.itb.2)
+
+lm.itb.3 <- lm(MAS.effect ~ 0 + Dosis + TijdNaInj, data = itb.effect, na.action = na.exclude)
+summary(lm.itb.3)
+
+
 tiff('residuals_linear_regression_full_model.tiff', width = 4*480, height = 2*480,
      units = "px", pointsize = 12, res = 144, compression = "lzw")
-plot(factor(itb.effect$EAD.nummer), residuals(lm.itb),
+plot(factor(itb.effect$EAD.nummer), residuals(lm.itb.1),
      main = 'Residuals of linear regression',
      xlab = 'Patient number')
 abline(h = 0, col = 'red')
@@ -109,14 +118,15 @@ dev.off()
 # residuals are not normaly distributed around zero => linear regression is not ok
 
 
+# ----------------------------
 # fitting a linear mixed model
 # ----------------------------
 
-itb.lme4 = lmer(MAS.effect ~ Dosis + (1 | EAD.nummer), data = itb.effect)
-summary(itb.lme4)
+itb.lme4.1 = lmer(MAS.effect ~ Dosis + (1 | EAD.nummer), data = itb.effect)
+summary(itb.lme4.1)
 
-itb.lme4 = lmer(MAS.effect ~ Dosis + (Dosis | EAD.nummer), data = itb.effect)
-summary(itb.lme4)
+itb.lme4.2 = lmer(MAS.effect ~ Dosis + (Dosis | EAD.nummer), data = itb.effect)
+summary(itb.lme4.2)
 
 itb.lme4 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + TijdNaInj + (1 | EAD.nummer), data = itb.effect)
 summary(itb.lme4)
