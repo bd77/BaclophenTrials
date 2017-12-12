@@ -162,53 +162,29 @@ itb.lme4.1 = lmer(MAS.effect ~ Dosis + vorigeDosis + DosisEergisteren + TijdNaIn
 summary(itb.lme4.1)
 # => intercept is not significant
 
-# full model without intercept
-itb.lme4.2 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + DosisEergisteren + TijdNaInj + (Dosis | EAD.nummer), 
+tiff('residuals_linear_mixed_model.tiff', width = 4*480, height = 2*480,
+     units = "px", pointsize = 12, res = 144, compression = "lzw")
+plot(factor(itb.lme4.1@frame$EAD.nummer), resid(itb.lme4.1),
+     main = 'Residuals of linear mixed model',
+     xlab = 'Patient number')
+abline(h = 0, col = 'red')
+dev.off()
+
+
+# full model without intercept and time after injectoin
+itb.lme4.2 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + DosisEergisteren + (Dosis | EAD.nummer), 
                   data = itb.effect)
 summary(itb.lme4.2)
+# in this model the 'vorigedosis' is not significant whiel 'DosisEergisteren' is
 
 # full model without intercept and without previous doses
-itb.lme4.3 = lmer(MAS.effect ~ 0 + Dosis + TijdNaInj + (Dosis | EAD.nummer), 
+itb.lme4.3 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + (Dosis | EAD.nummer), 
                   data = itb.effect)
 summary(itb.lme4.3)
 
-
-# full model
-itb.lme4.1 = lmer(MAS.effect ~ Dosis + vorigeDosis + TijdNaInj + (Dosis | EAD.nummer), data = itb.effect)
-summary(itb.lme4.1)
-
-itb.lme4.1 = lmer(MAS.effect ~ Dosis + (1 | EAD.nummer), data = itb.effect, REML = FALSE)
-summary(itb.lme4.1)
-
-itb.lme4.2 = lmer(MAS.effect ~ Dosis + (Dosis | EAD.nummer), data = itb.effect, REML = FALSE)
-summary(itb.lme4.2)
-
-AIC(itb.lme4.1, itb.lme4.2)
-
-itb.lme4 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + TijdNaInj + (1 | EAD.nummer), data = itb.effect)
-summary(itb.lme4)
-
-
-itb.lme4.4 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + TijdNaInj + DosisEergisteren + (Dosis | EAD.nummer), 
-                  data = itb.effect)
-summary(itb.lme4.4)
-
-
-anova(itb.lme4.3, itb.lme4.4)
-
-itb.lme4.5 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + (Dosis | EAD.nummer), data = itb.effect)
-summary(itb.lme4.5)
-
-
-
-
-
-
-
-
-
-
-
-
-
+# measuring after 2 or 4 hours
+png('Measure after 2 or 4 hours.png')
+plot(factor(itb.effect$EAD.nummer), itb.effect$MASna4uur-itb.effect$MASna2uur,
+     ylab = 'after4h - after2h')
+dev.off()
 
