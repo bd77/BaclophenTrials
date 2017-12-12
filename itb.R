@@ -11,7 +11,7 @@ library(ggplot2)
 library(lme4)
 
 setwd('D:/Other/ITB/')
-setwd('C:\Documenten/Statistiek/BaclophenTrials/')
+# setwd('C:/Documenten/Statistiek/BaclophenTrials/')
 
 # itbdata.xlsx <- read_excel("ITB trials - data-analyse.xlsx", sheet = 1)
 # itbdata.xlsx <- read_excel("Kopie van ITB trials - data-analyse (002) 13-06-17.xlsx", sheet = 1)
@@ -44,15 +44,16 @@ for (i in 1:NROW(itb.effect)) {
   }
 }
 
-
-tiff(paste0("Overzicht_dosis_effect_per_patient_", date.tag, ".tiff"), width = 4*480, height = 8*480, 
+# make one plot with all trials
+tiff(paste0("Overzicht_dosis_effect_per_patient_all_", date.tag, ".tiff"), width = 4*480, height = 6*480, 
      units = "px", pointsize = 12, res = 144, compression = "lzw")
 p <- ggplot(data = itb.effect, aes(x = Dosis, y = MAS.effect, colour = factor(TijdNaInj))) + geom_point() + facet_wrap( ~ EAD.nummer)
-p <- p  + geom_hline(aes(yintercept=0)) + stat_smooth(method = "lm") + theme_grey(base_size = 18)
+p <- p + geom_hline(aes(yintercept=0)) + stat_smooth(method = "lm") + theme_grey(base_size = 18)
+p <- p + theme(legend.position = "bottom")
 p
 dev.off()
 
-# make 3 plots of 8
+# make 4 plots of 9
 EAD.list <- unique(itb.effect$EAD.nummer)
 np <- length(EAD.list)
 graphs.per.plot <- 9
@@ -70,11 +71,43 @@ for (i in seq(1, 4)) {
   dev.off()
 }
 
+# linear regression for each individual patient
+EAD.nummer <- 60764805
+EAD.overview.df <- data.frame()
+for (EAD.nummer in unique(itb.effect$EAD.nummer)) {
+  lm.EAD <- lm(MAS.effect ~ Dosis, itb.effect[itb.effect$EAD.nummer == EAD.nummer,])
+  EAD.df <- data.frame(EAD.nummer = EAD.nummer,
+                       intercept = as.double(coef(lm.EAD)[1]),
+                       intercept.low = as.double(confint(lm.EAD)[1,1]),
+                       intercept.high = as.double(confint(lm.EAD)[1,2]),
+                       slope = as.double(coef(lm.EAD)[2]),
+                       slope.low = as.double(confint(lm.EAD)[2,1]),
+                       slope.high = as.double(confint(lm.EAD)[2,2]))
+  EAD.overview.df <- rbind(EAD.overview.df, EAD.df)
+}
+png('boxplot_slope_intercept.png')
+par(mfrow = c(1,2))
+for (parameter in c('intercept', 'slope')) {
+  boxplot(EAD.overview.df[, parameter], main = parameter)
+  for (i in 1:NROW(EAD.overview.df)) {
+    if (EAD.overview.df[i, paste0(parameter, '.low')] * EAD.overview.df[i, paste0(parameter, '.high')] < 0) {
+      kleur <- 'blue'
+    } else {
+      kleur <- 'red'
+    }
+    points(1, EAD.overview.df[i, parameter], col=kleur, pch = 16)
+    abline(h = 0)
+    legend('bottomright', pch = 16, legend = c('0 in CI', '0 outside CI'), col = c('blue', 'red'))
+  }
+}
+dev.off()
+
 # ----------------------------
 # simple linear regression
 # ----------------------------
 
-lm.itb.1 <- lm(MAS.effect ~ Dosis + TijdNaInj + vorigeDosis + DosisEergisteren, data = itb.effect, na.action = na.exclude)
+lm.itb.1 <- lm(MAS.effect ~ Dosis + TijdNaInj + vorigeDosis + DosisEergisteren, 
+               data = itb.effect, na.action = na.exclude)
 summary(lm.itb.1)
 
 # Call:
@@ -100,13 +133,6 @@ summary(lm.itb.1)
 # Multiple R-squared:  0.1644,	Adjusted R-squared:  0.1518 
 # F-statistic: 13.04 on 4 and 265 DF,  p-value: 1.051e-09
 
-lm.itb.2 <- lm(MAS.effect ~ 0 + Dosis + TijdNaInj + vorigeDosis + DosisEergisteren, data = itb.effect, na.action = na.exclude)
-summary(lm.itb.2)
-
-lm.itb.3 <- lm(MAS.effect ~ 0 + Dosis + TijdNaInj, data = itb.effect, na.action = na.exclude)
-summary(lm.itb.3)
-
-
 tiff('residuals_linear_regression_full_model.tiff', width = 4*480, height = 2*480,
      units = "px", pointsize = 12, res = 144, compression = "lzw")
 plot(factor(itb.effect$EAD.nummer), residuals(lm.itb.1),
@@ -115,12 +141,41 @@ plot(factor(itb.effect$EAD.nummer), residuals(lm.itb.1),
 abline(h = 0, col = 'red')
 dev.off()
 
+lm.itb.2 <- lm(MAS.effect ~ 0 + Dosis + TijdNaInj + vorigeDosis + DosisEergisteren, data = itb.effect, na.action = na.exclude)
+summary(lm.itb.2)
+
+lm.itb.3 <- lm(MAS.effect ~ 0 + Dosis + TijdNaInj, data = itb.effect, na.action = na.exclude)
+summary(lm.itb.3)
+
+
+
 # residuals are not normaly distributed around zero => linear regression is not ok
 
 
 # ----------------------------
 # fitting a linear mixed model
 # ----------------------------
+
+# full model
+itb.lme4.1 = lmer(MAS.effect ~ Dosis + vorigeDosis + DosisEergisteren + TijdNaInj + (Dosis | EAD.nummer), 
+                  data = itb.effect)
+summary(itb.lme4.1)
+# => intercept is not significant
+
+# full model without intercept
+itb.lme4.2 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + DosisEergisteren + TijdNaInj + (Dosis | EAD.nummer), 
+                  data = itb.effect)
+summary(itb.lme4.2)
+
+# full model without intercept and without previous doses
+itb.lme4.3 = lmer(MAS.effect ~ 0 + Dosis + TijdNaInj + (Dosis | EAD.nummer), 
+                  data = itb.effect)
+summary(itb.lme4.3)
+
+
+# full model
+itb.lme4.1 = lmer(MAS.effect ~ Dosis + vorigeDosis + TijdNaInj + (Dosis | EAD.nummer), data = itb.effect)
+summary(itb.lme4.1)
 
 itb.lme4.1 = lmer(MAS.effect ~ Dosis + (1 | EAD.nummer), data = itb.effect, REML = FALSE)
 summary(itb.lme4.1)
@@ -133,10 +188,9 @@ AIC(itb.lme4.1, itb.lme4.2)
 itb.lme4 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + TijdNaInj + (1 | EAD.nummer), data = itb.effect)
 summary(itb.lme4)
 
-itb.lme4.3 = lmer(MAS.effect ~ Dosis + vorigeDosis + TijdNaInj + (Dosis | EAD.nummer), data = itb.effect)
-summary(itb.lme4.3)
 
-itb.lme4.4 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + TijdNaInj + (Dosis | EAD.nummer), data = itb.effect)
+itb.lme4.4 = lmer(MAS.effect ~ 0 + Dosis + vorigeDosis + TijdNaInj + DosisEergisteren + (Dosis | EAD.nummer), 
+                  data = itb.effect)
 summary(itb.lme4.4)
 
 
